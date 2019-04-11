@@ -32,7 +32,7 @@ from collections import OrderedDict
 
 import grpc
 import os
-import hardware.swabian_instruments.pulse_streamer_pb2 as pulse_streamer_pb2
+import hardware.swabian_instruments.ulm_version.pulse_streamer_pb2 as pulse_streamer_pb2
 import dill
 
 class PulseStreamer(Base, PulserInterface):
@@ -237,7 +237,7 @@ class PulseStreamer(Base, PulserInterface):
         laser_and_uw_channels = self._convert_to_bitmask([self._laser_channel, self._uw_x_channel])
         laser_and_uw_on = pulse_streamer_pb2.PulseMessage(ticks=0, digi=laser_and_uw_channels, ao0=0, ao1=0)
         self._sequence = pulse_streamer_pb2.SequenceMessage(pulse=pulse_sequence, n_runs=0, initial=laser_on,
-            final=laser_and_uw_on, underflow=blank_pulse, start=1)
+                                                            final=laser_and_uw_on, underflow=blank_pulse, start=1)
 
         self.current_loaded_asset = asset_name
         return 0
