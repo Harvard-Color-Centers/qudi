@@ -112,6 +112,9 @@ class SITimeTaggerGatedCounter(Base, GatedCounterInterface):
     def __init__(self, config, **kwargs):
         super().__init__(config=config, **kwargs)
 
+        # Since actual activation of the module will be performed in
+        # on_activate(), here one only needs to declare all instance variables
+
         # Reference to tagger
         self._tagger = None
         # Reference to the TT.CountBetweenMarkers measurement instance
@@ -183,8 +186,8 @@ class SITimeTaggerGatedCounter(Base, GatedCounterInterface):
 
     def init_counter(self, bin_number):
         # Close existing counter, if it was initialized before
-        # (this method will not fail even if there is nothing to close)
-        self.close_counter()
+        if self.get_status() != -1:
+            self.close_counter()
 
         # Instantiate counter measurement
         try:
@@ -239,15 +242,15 @@ class SITimeTaggerGatedCounter(Base, GatedCounterInterface):
 
         current_status = self.get_status()
 
-        # terminate counting if it is already running
-        if current_status == 1:
-            self.terminate_counting()
-
         # Sanity check: ensure that counter is not "void"
         if current_status == -1:
             self.log.error('start_counting(): counter is in "void" state - it ether was not initialized '
                            'or was closed. Initialize it by calling init_counter()')
             return -1
+
+        # Terminate counting if it is already running
+        if current_status == 1:
+            self.terminate_counting()
 
         # Try stopping and restarting counter measurement
         try:
@@ -300,19 +303,19 @@ class SITimeTaggerGatedCounter(Base, GatedCounterInterface):
 
         # Check that counter measurement was initialized and that the connection works
         # by calling isRunning()
-        #  -- if self._counter is None or if connection is broken, call will rise some exception
-        #     in this case "void" status should be set
+        #  -- if self._counter is None or if connection is broken, call will rise some
+        #     exception. In this case "void" status should be set
         #  -- if counter was initialized and connection works, it will return successfully
+        #     (True or False, but the result does not matter)
         #     and further choice between "idle", "in_progress", and "finished" should be made
         try:
             self._counter.isRunning()
         except:
-            # status will be set to "void" during close_counter() call
-            # in addition, this cleanup is needed if connection is broken
-            self.close_counter()
+            # set status to "void"
+            self._status = -1
 
         # No handling of "idle" and "finished" status is needed:
-        # it will be returned by self._status
+        # it will be returned by self._status as is
 
         # Handle "in_progress" status
         #   This status means that measurement was started before.
@@ -368,7 +371,8 @@ class SITimeTaggerGatedCounter(Base, GatedCounterInterface):
     # ------------------------------------------------------
 
     def _set_status(self, new_status):
-        """ Method to set new status in a clean way.
+        """
+        Method to set new status in a clean way.
 
         This method compares the requested new_status with current status
         and checks if this transition is possible. If transition is possible,
@@ -384,8 +388,8 @@ class SITimeTaggerGatedCounter(Base, GatedCounterInterface):
 
         :return: (int) operation status code:
                  0 - OK, change was accepted and applied
-                -1 - Error, impossible transition was requested, no state change
-                     was applied
+                -1 - Error, impossible transition was requested,
+                     no state change was applied
         """
 
         # Transition to "void" is always possible
@@ -421,6 +425,7 @@ class SITimeTaggerGatedCounter(Base, GatedCounterInterface):
                 return -1
 
         # Transition to "finished" is only possible from "in_progress"
+        # by successful completion of count_array accumulation
         if new_status == 2:
             if self._status == 1:
                 self._status = 2

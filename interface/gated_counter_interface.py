@@ -117,11 +117,14 @@ class GatedCounterInterface(metaclass=InterfaceMetaclass):
              It has to be (re)initialized by calling init_counter()
 
          0 - "idle" - counter is ready to be started by calling start_counting().
-             If counting process was started before, it is now complete and
-             accumulated counts can be obtained by calling get_count_array()
+             There is no count data to read, if counter is "idle".
+
+             If counting process was started before and counter appears
+             to be "idle", counting process was terminated before completion and
+             all accumulated data was deleted.
 
          1 - "in_progress" - counter is accumulating clicks right now.
-             Counter will return to "idle" state once it receives bin_number
+             Counter will transit to "finished" state once it receives bin_number
              gate pulses.
 
              No data can be read out until this process is finished
@@ -129,7 +132,7 @@ class GatedCounterInterface(metaclass=InterfaceMetaclass):
              will return only after array accumulation is complete.
 
              Counter can be interrupted/closed by calling terminate_counting() or
-             close_counter() to bring it to "idle" or "void" state.
+             close_counter() to bring it to "idle" or "void" state respectively.
 
          2 - "finished" - counter has finished accumulating counts.
              Now get_count_array() will return accumulated array
@@ -159,9 +162,11 @@ class GatedCounterInterface(metaclass=InterfaceMetaclass):
         process is not disturbed and continues to run. One can call get_count_array()
         later or call terminate_counting() to stop accumulation.
         To remove time limit, set timeout to -1.
+        Attempt to read will be performed every abs(timeout/100) seconds.
 
 
-        :param timeout: (int) operation timeout in seconds (-1 for "infinite")
+        :param timeout: (int) operation timeout in seconds
+                        (0 for "return immediately", -1 for "infinite")
 
         :return: np.array(bin_number, dtype=np.uint32) count_array
                  Empty list [] is returned if there is no data to read, if operation
