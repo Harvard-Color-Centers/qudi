@@ -99,6 +99,8 @@ class SITimeTagger(Base):
         # Connect to TimeTagger
         try:
             self._tagger = TT.createTimeTagger(self._serial_str)
+            self._tagger.reset()
+
         # If TT function call fails, it normally rises NotImplementedError
         except NotImplementedError:
             self.log.error('on_activate(): TT.createTimeTagger() call failed [self._serial_str={}]'

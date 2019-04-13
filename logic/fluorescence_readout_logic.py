@@ -11,7 +11,7 @@ class FluorescenceReadoutLogic(GenericLogic):
 
     _cfg_scheme_str = ConfigOption(name='readout_scheme', missing='error')
 
-    _counter_connector = Connector(interface='GatedCounterInterface')
+    gated_counter = Connector(interface='GatedCounterInterface')
 
     def __init__(self, config, **kwargs):
         super().__init__(config=config, **kwargs)
@@ -39,9 +39,6 @@ class FluorescenceReadoutLogic(GenericLogic):
 
     def on_activate(self):
 
-        # Get reference to GatedCounter hardware module
-        self._counter = self._counter_connector()
-
         # Init all variables with default values - actual initialization
         # of readout will be performed in init_readout().
         self.set_readout_scheme(new_scheme_str=self._cfg_scheme_str)
@@ -53,10 +50,14 @@ class FluorescenceReadoutLogic(GenericLogic):
 
     def init_readout(self, n_points):
 
+        # Get reference to GatedCounter hardware module
+        self._counter = self.gated_counter()
+
         # Try initializing counter
         op_status = self._counter.init_counter(
             bin_number = n_points*self._bins_per_point
         )
+
         if op_status == 0:
             self.log.info('init_readout(): successfully initialized counting hardware')
 
@@ -64,6 +65,7 @@ class FluorescenceReadoutLogic(GenericLogic):
             self._n_points = n_points
 
             return 0
+
         else:
             self.log.error('init_readout(): initialization of counter failed')
             self._n_points = 0
@@ -162,14 +164,18 @@ class FluorescenceReadoutLogic(GenericLogic):
 
                 for i in range(self._n_points):
                     try:
-                        state_array[i] = raw_array[i] / raw_array[i+1]
+                        state_array[i] = raw_array[2*i] / raw_array[2*i + 1]
                     except ZeroDivisionError:
                         self.log.warn('get_state_array(): normalization bin #{} is zero, cannot calculate state')
                         state_array[i] = None
 
+                return state_array
+
         # counter returned empty array
         else:
             return []
+
+    # ----------- End Interface methods --------------
 
     def get_readout_scheme(self):
         return copy.deepcopy(self._scheme_str)
